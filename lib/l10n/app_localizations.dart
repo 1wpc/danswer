@@ -13,7 +13,7 @@ class AppLocalizations {
 
   static final Map<String, Map<String, String>> _localizedValues = {
     'en': {
-      'appTitle': 'AI Homework Solver',
+      'appTitle': 'Danswer - Your AI Tutor',
       'settings': 'Settings',
       'takePhoto': 'Take Photo',
       'pickGallery': 'Pick from Gallery',
@@ -52,7 +52,7 @@ class AppLocalizations {
       'quote': 'Quote',
     },
     'zh': {
-      'appTitle': 'AI 作业助手',
+      'appTitle': '答达——你的AI家教',
       'settings': '设置',
       'takePhoto': '拍照',
       'pickGallery': '从相册选择',

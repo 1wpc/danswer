@@ -101,13 +101,6 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: Text(
-          l10n.get('appTitle'),
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: colorScheme.primary,
-          ),
-        ),
         actions: [
           IconButton(
             icon: Icon(Icons.history, color: colorScheme.primary),
@@ -150,7 +143,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
                           color: colorScheme.primaryContainer,
                           shape: BoxShape.circle,
@@ -162,10 +154,21 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ],
                         ),
-                        child: Icon(
-                          Icons.auto_awesome,
-                          size: 64,
-                          color: colorScheme.primary,
+                        child: ClipOval(
+                          child: Image.asset(
+                            'assets/images/custom_logo.png',
+                            width: 100,
+                            height: 100,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              debugPrint('Error loading logo: $error');
+                              return Icon(
+                                Icons.auto_awesome,
+                                size: 100,
+                                color: colorScheme.primary,
+                              );
+                            },
+                          ),
                         ),
                       ),
                       const SizedBox(height: 24),
