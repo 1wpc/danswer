@@ -108,6 +108,9 @@ class HistoryScreen extends StatelessWidget {
                         builder: (context) => ResultScreen(
                           imageFile: File(item.imagePath),
                           initialSolution: item.solution,
+                          initialModel: item.model,
+                          historyId: item.id,
+                          initialChatHistory: item.chatHistory,
                         ),
                       ),
                     );

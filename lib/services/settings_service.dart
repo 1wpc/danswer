@@ -134,6 +134,12 @@ When provided with an image of a problem (math, physics, chemistry, etc.):
         baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
         models: ['gemini-3-pro-preview', 'gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.5-pro'],
       ),
+      ProviderConfig(
+        id: 'doubao',
+        name: 'Doubao (Volcengine)',
+        baseUrl: 'https://ark.cn-beijing.volces.com/api/v3',
+        models: ['doubao-pro-4k', 'doubao-lite-4k', 'doubao-pro-32k', 'doubao-lite-32k'],
+      ),
     ];
   }
 

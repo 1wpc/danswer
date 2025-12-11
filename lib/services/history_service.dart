@@ -48,7 +48,7 @@ class HistoryService with ChangeNotifier {
     }
   }
 
-  Future<void> addRecord(File imageFile, String solution) async {
+  Future<String> addRecord(File imageFile, String solution, {String? model, List<Map<String, dynamic>>? chatHistory}) async {
     try {
       final directory = await getApplicationDocumentsDirectory();
       final String fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
@@ -68,13 +68,40 @@ class HistoryService with ChangeNotifier {
         imagePath: newPath,
         solution: solution,
         timestamp: DateTime.now(),
+        model: model,
+        chatHistory: chatHistory,
       );
 
       _items.insert(0, newItem);
       await _saveHistory();
       notifyListeners();
+      return newItem.id;
     } catch (e) {
       debugPrint('Error adding history record: $e');
+      return '';
+    }
+  }
+
+  Future<void> updateRecord(String id, {String? solution, List<Map<String, dynamic>>? chatHistory}) async {
+    try {
+      final index = _items.indexWhere((item) => item.id == id);
+      if (index != -1) {
+        final oldItem = _items[index];
+        final newItem = HistoryItem(
+          id: oldItem.id,
+          imagePath: oldItem.imagePath,
+          solution: solution ?? oldItem.solution,
+          timestamp: oldItem.timestamp,
+          model: oldItem.model,
+          chatHistory: chatHistory ?? oldItem.chatHistory,
+        );
+        
+        _items[index] = newItem;
+        await _saveHistory();
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error updating history record: $e');
     }
   }
 

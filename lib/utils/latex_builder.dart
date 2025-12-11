@@ -18,9 +18,24 @@ class LatexElementBuilder extends MarkdownElementBuilder {
         mathStyle: isDisplayMode ? MathStyle.display : MathStyle.text,
       );
       
+      // Wrap in Stack with transparent Text to enable text selection
       return SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        child: mathWidget,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            mathWidget,
+            Positioned.fill(
+              child: Opacity(
+                opacity: 0, // Fully transparent but present in tree
+                child: Text(
+                  textContent,
+                  style: preferredStyle?.copyWith(color: Colors.transparent),
+                ),
+              ),
+            ),
+          ],
+        ),
       );
     } catch (e) {
       return Text(textContent, style: preferredStyle);

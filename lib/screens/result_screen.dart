@@ -17,20 +17,40 @@ import '../services/history_service.dart';
 class ResultScreen extends StatefulWidget {
   final File imageFile;
   final String? initialSolution;
+  final String? initialModel;
+  final String? historyId;
+  final List<Map<String, dynamic>>? initialChatHistory;
 
   const ResultScreen({
     super.key, 
     required this.imageFile,
     this.initialSolution,
+    this.initialModel,
+    this.historyId,
+    this.initialChatHistory,
   });
 
   @override
   State<ResultScreen> createState() => _ResultScreenState();
 
   static Widget buildMarkdown(BuildContext context, String data) {
+    final theme = Theme.of(context);
     return MarkdownBody(
       data: data,
       selectable: false,
+      styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
+        blockquoteDecoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(4),
+          border: Border(
+            left: BorderSide(
+              color: theme.colorScheme.primary,
+              width: 4,
+            ),
+          ),
+        ),
+        blockquotePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      ),
       extensionSet: md.ExtensionSet(
         [
           ...md.ExtensionSet.gitHubFlavored.blockSyntaxes,
@@ -65,10 +85,17 @@ class _ResultScreenState extends State<ResultScreen> {
   bool _isChatActive = false;
   bool _isSendingFollowUp = false;
   String? _quotedText;
+  
+  // Model info
+  String _currentModel = '';
+  String? _currentHistoryId;
 
   @override
   void initState() {
     super.initState();
+    _currentModel = widget.initialModel ?? '';
+    _currentHistoryId = widget.historyId;
+    
     if (widget.initialSolution != null) {
       _initializeWithSolution(widget.initialSolution!);
     } else {
@@ -84,6 +111,15 @@ class _ResultScreenState extends State<ResultScreen> {
     });
 
     final settings = context.read<SettingsService>();
+    
+    // Use stored chat history if available
+    if (widget.initialChatHistory != null && widget.initialChatHistory!.isNotEmpty) {
+      setState(() {
+        _chatHistory = List<Map<String, dynamic>>.from(widget.initialChatHistory!);
+      });
+      return;
+    }
+
     try {
       final bytes = await widget.imageFile.readAsBytes();
       final base64Image = base64Encode(bytes);
@@ -144,16 +180,16 @@ class _ResultScreenState extends State<ResultScreen> {
   }
 
   Future<void> _startSolving() async {
+    final settings = context.read<SettingsService>();
     setState(() {
       _isLoading = true;
       _errorMessage = null;
       _solutionText = '';
       _isChatActive = false;
       _chatHistory = [];
+      _currentModel = settings.model;
     });
 
-    final settings = context.read<SettingsService>();
-    
     // Initialize chat history with system prompt and user image message
     // We need to construct the initial messages here to save them
     try {
@@ -222,7 +258,18 @@ class _ResultScreenState extends State<ResultScreen> {
           });
         });
         // Save history when solution is complete
-        context.read<HistoryService>().addRecord(widget.imageFile, _solutionText);
+        context.read<HistoryService>().addRecord(
+          widget.imageFile, 
+          _solutionText,
+          model: _currentModel,
+          chatHistory: _chatHistory,
+        ).then((id) {
+          if (mounted) {
+            setState(() {
+              _currentHistoryId = id;
+            });
+          }
+        });
       },
     );
   }
@@ -236,7 +283,8 @@ class _ResultScreenState extends State<ResultScreen> {
     // Include quoted text in context if available
     String messageContent = text;
     if (_quotedText != null) {
-      messageContent = 'Based on the following text:\n> ${_quotedText!.replaceAll('\n', '\n> ')}\n\n$text';
+      final l10n = AppLocalizations.of(context)!;
+      messageContent = '${l10n.get('quotePrefix')}\n> ${_quotedText!.replaceAll('\n', '\n> ')}\n\n$text';
     }
 
     setState(() {
@@ -283,6 +331,14 @@ class _ResultScreenState extends State<ResultScreen> {
         setState(() {
           _isSendingFollowUp = false;
         });
+        
+        // Update history with new chat messages if we have an ID
+        if (_currentHistoryId != null) {
+          context.read<HistoryService>().updateRecord(
+            _currentHistoryId!,
+            chatHistory: _chatHistory,
+          );
+        }
       },
     );
   }
@@ -406,82 +462,49 @@ class _ResultScreenState extends State<ResultScreen> {
       );
     }
 
-    // Build chat list items
-    List<Widget> listItems = [];
+    // Build the list of content widgets
+    List<Widget> contentWidgets = [];
     
-    // 1. Initial Solution Card
-    listItems.add(
-      Card(
-        margin: const EdgeInsets.all(16.0),
-        elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(Icons.lightbulb_outline, color: Theme.of(context).primaryColor),
-                  const SizedBox(width: 8),
-                  Text(
-                    l10n.get('solution'),
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-              const Divider(),
-              ResultScreen.buildMarkdown(context, _solutionText),
-              if (_isLoading && !_isChatActive)
-                const Padding(
-                  padding: EdgeInsets.only(top: 16.0),
-                  child: Center(child: CircularProgressIndicator()),
+    // 1. Always show the initial solution using the document style
+    contentWidgets.add(ResultScreen.buildMarkdown(context, _solutionText));
+    
+    // 2. Show chat history (follow-ups) if available
+    if (_chatHistory.isNotEmpty) {
+      final firstAssistantIndex = _chatHistory.indexWhere((msg) => msg['role'] == 'assistant');
+      
+      // If we have an assistant message and there are messages after it
+      if (firstAssistantIndex != -1 && firstAssistantIndex < _chatHistory.length - 1) {
+        final followUpMessages = _chatHistory.sublist(firstAssistantIndex + 1);
+        
+        contentWidgets.add(
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24.0),
+            child: Row(
+              children: [
+                Expanded(child: Divider(color: Theme.of(context).dividerColor.withValues(alpha: 0.2))),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Icon(Icons.chat_bubble_outline, size: 16, color: Theme.of(context).disabledColor),
                 ),
-            ],
+                Expanded(child: Divider(color: Theme.of(context).dividerColor.withValues(alpha: 0.2))),
+              ],
+            ),
           ),
-        ),
-      ),
-    );
-
-    // 2. Chat History (Follow-up)
-    if (_chatHistory.length > 3) {
-      listItems.add(
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-          child: Row(
-            children: [
-              const Expanded(child: Divider()),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                child: Text(
-                  'Follow-up Q&A', // Could be localized
-                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                ),
-              ),
-              const Expanded(child: Divider()),
-            ],
-          ),
-        ),
-      );
-
-      for (int i = 3; i < _chatHistory.length; i++) {
-        final msg = _chatHistory[i];
-        final isUser = msg['role'] == 'user';
-        listItems.add(_buildChatMessage(msg, isUser));
+        );
+        
+        contentWidgets.addAll(followUpMessages.map((msg) {
+          final role = msg['role'];
+          return _buildChatMessage(msg, role == 'user');
+        }));
       }
     }
-    
-    // Add padding at bottom for input bar visibility
-    if (_isChatActive) {
-      listItems.add(const SizedBox(height: 16));
-    }
 
-    return SliverList(
-      delegate: SliverChildBuilderDelegate(
-        (context, index) => listItems[index],
-        childCount: listItems.length,
+    contentWidgets.add(const SizedBox(height: 80));
+
+    return SliverPadding(
+      padding: const EdgeInsets.all(16.0),
+      sliver: SliverList(
+        delegate: SliverChildListDelegate(contentWidgets),
       ),
     );
   }

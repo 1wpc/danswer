@@ -50,6 +50,7 @@ class AppLocalizations {
       'cancel': 'Cancel',
       'welcomeMessage': 'Select a model and take a photo to solve',
       'quote': 'Quote',
+      'quotePrefix': 'Based on the following text:',
     },
     'zh': {
       'appTitle': '答达——你的AI家教',
@@ -89,6 +90,7 @@ class AppLocalizations {
       'cancel': '取消',
       'welcomeMessage': '选择模型并拍照解题',
       'quote': '引用',
+      'quotePrefix': '基于以下内容：',
     },
   };
 
