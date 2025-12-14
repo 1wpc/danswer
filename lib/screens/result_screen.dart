@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -15,7 +15,7 @@ import '../l10n/app_localizations.dart';
 import '../services/history_service.dart';
 
 class ResultScreen extends StatefulWidget {
-  final File imageFile;
+  final Uint8List imageBytes;
   final String? initialSolution;
   final String? initialModel;
   final String? historyId;
@@ -23,7 +23,7 @@ class ResultScreen extends StatefulWidget {
 
   const ResultScreen({
     super.key, 
-    required this.imageFile,
+    required this.imageBytes,
     this.initialSolution,
     this.initialModel,
     this.historyId,
@@ -121,8 +121,7 @@ class _ResultScreenState extends State<ResultScreen> {
     }
 
     try {
-      final bytes = await widget.imageFile.readAsBytes();
-      final base64Image = base64Encode(bytes);
+      final base64Image = base64Encode(widget.imageBytes);
       final String mimeType = 'image/jpeg';
 
       setState(() {
@@ -193,8 +192,7 @@ class _ResultScreenState extends State<ResultScreen> {
     // Initialize chat history with system prompt and user image message
     // We need to construct the initial messages here to save them
     try {
-      final bytes = await widget.imageFile.readAsBytes();
-      final base64Image = base64Encode(bytes);
+      final base64Image = base64Encode(widget.imageBytes);
       final String mimeType = 'image/jpeg';
 
       _chatHistory = [
@@ -259,7 +257,7 @@ class _ResultScreenState extends State<ResultScreen> {
         });
         // Save history when solution is complete
         context.read<HistoryService>().addRecord(
-          widget.imageFile, 
+          widget.imageBytes, 
           _solutionText,
           model: _currentModel,
           chatHistory: _chatHistory,
@@ -387,8 +385,8 @@ class _ResultScreenState extends State<ResultScreen> {
                         children: [
                           GestureDetector(
                             onTap: () => _openFullScreenImage(context),
-                            child: Image.file(
-                              widget.imageFile,
+                            child: Image.memory(
+                              widget.imageBytes,
                               fit: BoxFit.cover,
                             ),
                           ),
@@ -519,7 +517,7 @@ class _ResultScreenState extends State<ResultScreen> {
             iconTheme: const IconThemeData(color: Colors.white),
           ),
           body: PhotoView(
-            imageProvider: FileImage(widget.imageFile),
+            imageProvider: MemoryImage(widget.imageBytes),
             minScale: PhotoViewComputedScale.contained,
             maxScale: PhotoViewComputedScale.covered * 4,
           ),

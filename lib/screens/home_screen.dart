@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -6,7 +6,10 @@ import 'result_screen.dart';
 import 'settings_screen.dart';
 import 'crop_screen.dart';
 import 'history_screen.dart';
+import 'auth_screen.dart';
+import 'subscription_screen.dart';
 import '../services/settings_service.dart';
+import '../services/auth_service.dart';
 import '../l10n/app_localizations.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -24,28 +27,29 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final XFile? pickedFile = await _picker.pickImage(source: source);
       if (pickedFile != null) {
-        _cropImage(pickedFile.path);
+        final bytes = await pickedFile.readAsBytes();
+        _cropImage(bytes);
       }
     } catch (e) {
       _showError('${l10n.get('failedToPick')}: $e');
     }
   }
 
-  Future<void> _cropImage(String sourcePath) async {
+  Future<void> _cropImage(Uint8List imageBytes) async {
     final l10n = AppLocalizations.of(context)!;
     try {
       // Use the custom CropScreen instead of ImageCropper
-      final File? croppedFile = await Navigator.of(context).push(
+      final Uint8List? croppedBytes = await Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (context) => CropScreen(imageFile: File(sourcePath)),
+          builder: (context) => CropScreen(imageBytes: imageBytes),
         ),
       );
 
-      if (croppedFile != null) {
+      if (croppedBytes != null) {
         if (!mounted) return;
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (context) => ResultScreen(imageFile: croppedFile),
+            builder: (context) => ResultScreen(imageBytes: croppedBytes),
           ),
         );
       }
@@ -101,6 +105,21 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.person, color: colorScheme.primary),
+          onPressed: () {
+            final authService = context.read<AuthService>();
+            if (authService.isLoggedIn) {
+               Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => const SubscriptionScreen()),
+              );
+            } else {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => const AuthScreen()),
+              );
+            }
+          },
+        ),
         actions: [
           IconButton(
             icon: Icon(Icons.history, color: colorScheme.primary),

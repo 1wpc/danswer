@@ -1,14 +1,13 @@
-import 'dart:io';
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:crop_image/crop_image.dart';
-import 'package:path_provider/path_provider.dart';
 import '../l10n/app_localizations.dart';
 
 class CropScreen extends StatefulWidget {
-  final File imageFile;
+  final Uint8List imageBytes;
 
-  const CropScreen({super.key, required this.imageFile});
+  const CropScreen({super.key, required this.imageBytes});
 
   @override
   State<CropScreen> createState() => _CropScreenState();
@@ -40,12 +39,8 @@ class _CropScreenState extends State<CropScreen> {
       
       final bytes = data.buffer.asUint8List();
       
-      final tempDir = await getTemporaryDirectory();
-      final file = await File('${tempDir.path}/cropped_${DateTime.now().millisecondsSinceEpoch}.png').create();
-      await file.writeAsBytes(bytes);
-      
       if (mounted) {
-        Navigator.of(context).pop(file);
+        Navigator.of(context).pop(bytes);
       }
     } catch (e) {
       if (mounted) {
@@ -90,7 +85,7 @@ class _CropScreenState extends State<CropScreen> {
       body: Center(
         child: CropImage(
           controller: _controller,
-          image: Image.file(widget.imageFile),
+          image: Image.memory(widget.imageBytes),
           minimumImageSize: 10, // Allows very small crops
           gridColor: Colors.white,
           gridCornerSize: 30,

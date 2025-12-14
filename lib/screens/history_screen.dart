@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -8,6 +10,24 @@ import 'result_screen.dart';
 
 class HistoryScreen extends StatelessWidget {
   const HistoryScreen({super.key});
+
+  ImageProvider _getImageProvider(String path) {
+    if (path.startsWith('data:')) {
+      final base64String = path.split(',').last;
+      return MemoryImage(base64Decode(base64String));
+    } else {
+      return FileImage(File(path));
+    }
+  }
+
+  Future<Uint8List> _getImageBytes(String path) async {
+    if (path.startsWith('data:')) {
+      final base64String = path.split(',').last;
+      return base64Decode(base64String);
+    } else {
+      return await File(path).readAsBytes();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -84,8 +104,8 @@ class HistoryScreen extends StatelessWidget {
                 child: ListTile(
                   leading: ClipRRect(
                     borderRadius: BorderRadius.circular(4),
-                    child: Image.file(
-                      File(item.imagePath),
+                    child: Image(
+                      image: _getImageProvider(item.imagePath),
                       width: 50,
                       height: 50,
                       fit: BoxFit.cover,
@@ -102,11 +122,13 @@ class HistoryScreen extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  onTap: () {
+                  onTap: () async {
+                    final bytes = await _getImageBytes(item.imagePath);
+                    if (!context.mounted) return;
                     Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (context) => ResultScreen(
-                          imageFile: File(item.imagePath),
+                          imageBytes: bytes,
                           initialSolution: item.solution,
                           initialModel: item.model,
                           historyId: item.id,

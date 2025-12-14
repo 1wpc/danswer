@@ -1,13 +1,16 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../models/history_item.dart';
 import 'package:path/path.dart' as path;
 
 class HistoryService with ChangeNotifier {
   static const String _fileName = 'history.json';
+  static const String _prefsKey = 'history_data';
   List<HistoryItem> _items = [];
   bool _initialized = false;
 
@@ -21,17 +24,26 @@ class HistoryService with ChangeNotifier {
 
   Future<void> _loadHistory() async {
     try {
-      final directory = await getApplicationDocumentsDirectory();
-      final file = File('${directory.path}/$_fileName');
-      
-      if (await file.exists()) {
-        final content = await file.readAsString();
-        final List<dynamic> jsonList = json.decode(content);
-        _items = jsonList.map((e) => HistoryItem.fromJson(e)).toList();
-        // Sort by timestamp descending
-        _items.sort((a, b) => b.timestamp.compareTo(a.timestamp));
-        notifyListeners();
+      if (kIsWeb) {
+        final prefs = await SharedPreferences.getInstance();
+        final content = prefs.getString(_prefsKey);
+        if (content != null) {
+          final List<dynamic> jsonList = json.decode(content);
+          _items = jsonList.map((e) => HistoryItem.fromJson(e)).toList();
+        }
+      } else {
+        final directory = await getApplicationDocumentsDirectory();
+        final file = File('${directory.path}/$_fileName');
+        
+        if (await file.exists()) {
+          final content = await file.readAsString();
+          final List<dynamic> jsonList = json.decode(content);
+          _items = jsonList.map((e) => HistoryItem.fromJson(e)).toList();
+        }
       }
+      
+      _items.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+      notifyListeners();
     } catch (e) {
       debugPrint('Error loading history: $e');
     }
@@ -39,33 +51,47 @@ class HistoryService with ChangeNotifier {
 
   Future<void> _saveHistory() async {
     try {
-      final directory = await getApplicationDocumentsDirectory();
-      final file = File('${directory.path}/$_fileName');
       final jsonList = _items.map((e) => e.toJson()).toList();
-      await file.writeAsString(json.encode(jsonList));
+      final content = json.encode(jsonList);
+
+      if (kIsWeb) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_prefsKey, content);
+      } else {
+        final directory = await getApplicationDocumentsDirectory();
+        final file = File('${directory.path}/$_fileName');
+        await file.writeAsString(content);
+      }
     } catch (e) {
       debugPrint('Error saving history: $e');
     }
   }
 
-  Future<String> addRecord(File imageFile, String solution, {String? model, List<Map<String, dynamic>>? chatHistory}) async {
+  Future<String> addRecord(Uint8List imageBytes, String solution, {String? model, List<Map<String, dynamic>>? chatHistory}) async {
     try {
-      final directory = await getApplicationDocumentsDirectory();
-      final String fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final String newPath = path.join(directory.path, 'images', fileName);
-      
-      // Create images directory if it doesn't exist
-      final imageDir = Directory(path.join(directory.path, 'images'));
-      if (!await imageDir.exists()) {
-        await imageDir.create(recursive: true);
-      }
+      String imagePath;
 
-      // Copy image to permanent storage
-      await imageFile.copy(newPath);
+      if (kIsWeb) {
+        final base64 = base64Encode(imageBytes);
+        imagePath = 'data:image/png;base64,$base64';
+      } else {
+        final directory = await getApplicationDocumentsDirectory();
+        final String fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
+        final String newPath = path.join(directory.path, 'images', fileName);
+        
+        final imageDir = Directory(path.join(directory.path, 'images'));
+        if (!await imageDir.exists()) {
+          await imageDir.create(recursive: true);
+        }
+
+        final file = File(newPath);
+        await file.writeAsBytes(imageBytes);
+        imagePath = newPath;
+      }
 
       final newItem = HistoryItem(
         id: const Uuid().v4(),
-        imagePath: newPath,
+        imagePath: imagePath,
         solution: solution,
         timestamp: DateTime.now(),
         model: model,
