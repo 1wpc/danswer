@@ -133,6 +133,7 @@ class HistoryScreen extends StatelessWidget {
                           initialModel: item.model,
                           historyId: item.id,
                           initialChatHistory: item.chatHistory,
+                          initialKnowledgePoints: item.knowledgePoints,
                         ),
                       ),
                     );

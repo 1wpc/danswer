@@ -5,6 +5,7 @@ class HistoryItem {
   final DateTime timestamp;
   final String? model;
   final List<Map<String, dynamic>>? chatHistory;
+  final String? knowledgePoints;
 
   HistoryItem({
     required this.id,
@@ -13,6 +14,7 @@ class HistoryItem {
     required this.timestamp,
     this.model,
     this.chatHistory,
+    this.knowledgePoints,
   });
 
   Map<String, dynamic> toJson() {
@@ -23,6 +25,7 @@ class HistoryItem {
       'timestamp': timestamp.toIso8601String(),
       'model': model,
       'chatHistory': chatHistory,
+      'knowledgePoints': knowledgePoints,
     };
   }
 
@@ -36,6 +39,7 @@ class HistoryItem {
       chatHistory: json['chatHistory'] != null 
           ? List<Map<String, dynamic>>.from(json['chatHistory'])
           : null,
+      knowledgePoints: json['knowledgePoints'],
     );
   }
 }

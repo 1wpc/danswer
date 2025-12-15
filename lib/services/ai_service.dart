@@ -31,7 +31,7 @@ class AIService {
       body = jsonEncode({
         'model': settings.model,
         'messages': messages,
-        'max_tokens': 4096,
+        'max_tokens': 16384, // Increased limit for thinking models
         'stream': true,
       });
     } else {
@@ -108,11 +108,37 @@ class AIService {
           if (data == '[DONE]') break;
           
           try {
+            debugPrint('Raw Chunk Data: $data'); // DEBUG LOG
             final json = jsonDecode(data);
             if (json['choices'] != null && json['choices'].isNotEmpty) {
-              final delta = json['choices'][0]['delta'];
-              if (delta != null && delta['content'] != null) {
-                yield delta['content'] as String;
+              final choice = json['choices'][0];
+              final delta = choice['delta'];
+              
+              if (delta != null) {
+                 // Handle standard content
+                 if (delta['content'] != null) {
+                   yield delta['content'] as String;
+                 }
+                 // Handle potential reasoning_content for thinking models
+                 else if (delta['reasoning_content'] != null) {
+                   yield delta['reasoning_content'] as String;
+                 }
+                 // Handle standard Gemini format leak (parts -> text)
+                 else if (delta['parts'] != null && (delta['parts'] as List).isNotEmpty) {
+                    final part = delta['parts'][0];
+                    if (part['text'] != null) {
+                      yield part['text'] as String;
+                    }
+                 }
+                 // Handle direct text field (some proxies)
+                 else if (delta['text'] != null) {
+                   yield delta['text'] as String;
+                 }
+               }
+              
+              // Check for finish_reason
+              if (choice['finish_reason'] != null) {
+                debugPrint('Finish Reason: ${choice['finish_reason']}');
               }
             } else if (json['error'] != null) {
                 throw Exception(json['error']);

@@ -67,7 +67,7 @@ class HistoryService with ChangeNotifier {
     }
   }
 
-  Future<String> addRecord(Uint8List imageBytes, String solution, {String? model, List<Map<String, dynamic>>? chatHistory}) async {
+  Future<String> addRecord(Uint8List imageBytes, String solution, {String? model, List<Map<String, dynamic>>? chatHistory, String? knowledgePoints}) async {
     try {
       String imagePath;
 
@@ -96,6 +96,7 @@ class HistoryService with ChangeNotifier {
         timestamp: DateTime.now(),
         model: model,
         chatHistory: chatHistory,
+        knowledgePoints: knowledgePoints,
       );
 
       _items.insert(0, newItem);
@@ -108,7 +109,7 @@ class HistoryService with ChangeNotifier {
     }
   }
 
-  Future<void> updateRecord(String id, {String? solution, List<Map<String, dynamic>>? chatHistory}) async {
+  Future<void> updateRecord(String id, {String? solution, List<Map<String, dynamic>>? chatHistory, String? knowledgePoints}) async {
     try {
       final index = _items.indexWhere((item) => item.id == id);
       if (index != -1) {
@@ -120,6 +121,7 @@ class HistoryService with ChangeNotifier {
           timestamp: oldItem.timestamp,
           model: oldItem.model,
           chatHistory: chatHistory ?? oldItem.chatHistory,
+          knowledgePoints: knowledgePoints ?? oldItem.knowledgePoints,
         );
         
         _items[index] = newItem;

@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:image/image.dart' as img;
 import 'result_screen.dart';
 import 'settings_screen.dart';
 import 'crop_screen.dart';
@@ -28,34 +29,172 @@ class _HomeScreenState extends State<HomeScreen> {
       final XFile? pickedFile = await _picker.pickImage(source: source);
       if (pickedFile != null) {
         final bytes = await pickedFile.readAsBytes();
-        _cropImage(bytes);
+        final croppedBytes = await _cropImage(bytes);
+        
+        if (croppedBytes != null) {
+          if (!mounted) return;
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => ResultScreen(imageBytes: croppedBytes),
+            ),
+          );
+        }
       }
     } catch (e) {
       _showError('${l10n.get('failedToPick')}: $e');
     }
   }
 
-  Future<void> _cropImage(Uint8List imageBytes) async {
+  Future<Uint8List?> _cropImage(Uint8List imageBytes) async {
     final l10n = AppLocalizations.of(context)!;
     try {
       // Use the custom CropScreen instead of ImageCropper
-      final Uint8List? croppedBytes = await Navigator.of(context).push(
+      return await Navigator.of(context).push(
         MaterialPageRoute(
           builder: (context) => CropScreen(imageBytes: imageBytes),
         ),
       );
-
-      if (croppedBytes != null) {
-        if (!mounted) return;
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) => ResultScreen(imageBytes: croppedBytes),
-          ),
-        );
-      }
     } catch (e) {
       _showError('${l10n.get('failedToCrop')}: $e');
+      return null;
     }
+  }
+
+  Future<void> _pickMultiPageImage() async {
+    final l10n = AppLocalizations.of(context)!;
+    List<Uint8List> images = [];
+    bool continueAdding = true;
+
+    while (continueAdding) {
+      try {
+        final XFile? pickedFile = await _picker.pickImage(source: ImageSource.camera);
+        if (pickedFile == null) break;
+
+        final bytes = await pickedFile.readAsBytes();
+        final croppedBytes = await _cropImage(bytes);
+
+        if (croppedBytes != null) {
+          images.add(croppedBytes);
+          
+          if (!mounted) break;
+
+          // Ask user to continue
+          final shouldContinue = await showDialog<bool>(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => AlertDialog(
+              title: Text('${l10n.get('pageAdded')}${images.length}'),
+              content: Text(l10n.get('addAnotherPage')),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: Text(l10n.get('finish')),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: Text(l10n.get('addPage')),
+                ),
+              ],
+            ),
+          );
+          
+          continueAdding = shouldContinue ?? false;
+        } else {
+          // User cancelled crop, maybe stop?
+          continueAdding = false; 
+        }
+      } catch (e) {
+        _showError('${l10n.get('failedToPick')}: $e');
+        continueAdding = false;
+      }
+    }
+
+    if (images.isNotEmpty) {
+      _stitchAndSolve(images);
+    }
+  }
+
+  Future<void> _stitchAndSolve(List<Uint8List> images) async {
+    if (images.length == 1) {
+      if (!mounted) return;
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => ResultScreen(imageBytes: images.first),
+        ),
+      );
+      return;
+    }
+
+    final l10n = AppLocalizations.of(context)!;
+    _showLoading(l10n.get('stitching'));
+
+    try {
+      // Decode images in a separate isolate or just async to avoid blocking UI too much
+      // For simplicity here, running in main isolate but with await where possible
+      // Actually image decoding is sync in `image` package. 
+      // Ideally should be compute(), but `image` package objects are not easily transferable across isolates without serialization.
+      
+      await Future.delayed(const Duration(milliseconds: 100)); // Give UI time to show dialog
+
+      List<img.Image> decodedImages = [];
+      int maxWidth = 0;
+      int totalHeight = 0;
+
+      for (var bytes in images) {
+        final decoded = img.decodeImage(bytes);
+        if (decoded != null) {
+          decodedImages.add(decoded);
+          if (decoded.width > maxWidth) maxWidth = decoded.width;
+          totalHeight += decoded.height;
+        }
+      }
+
+      if (decodedImages.isEmpty) throw Exception('No valid images');
+
+      // Create canvas
+      final mergedImage = img.Image(width: maxWidth, height: totalHeight);
+      
+      int currentY = 0;
+      for (var image in decodedImages) {
+        int dstX = (maxWidth - image.width) ~/ 2;
+        img.compositeImage(mergedImage, image, dstX: dstX, dstY: currentY);
+        currentY += image.height;
+      }
+
+      final mergedBytes = Uint8List.fromList(img.encodeJpg(mergedImage));
+      
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading
+
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => ResultScreen(imageBytes: mergedBytes),
+        ),
+      );
+
+    } catch (e) {
+      if (mounted) Navigator.pop(context); // Close loading
+      _showError('${l10n.get('failedToStitch')}: $e');
+    }
+  }
+
+  void _showLoading(String message) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Row(
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(width: 20),
+              Text(message),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void _showError(String message) {
@@ -308,6 +447,14 @@ class _HomeScreenState extends State<HomeScreen> {
                         icon: Icons.camera_alt_rounded,
                         label: l10n.get('takePhoto'),
                         onPressed: () => _pickImage(ImageSource.camera),
+                        isPrimary: true,
+                      ),
+                      const SizedBox(height: 16),
+                      _buildActionButton(
+                        context,
+                        icon: Icons.burst_mode_rounded,
+                        label: l10n.get('crossPageCapture'),
+                        onPressed: _pickMultiPageImage,
                         isPrimary: true,
                       ),
                       const SizedBox(height: 16),

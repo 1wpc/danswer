@@ -13,6 +13,7 @@ import '../utils/latex_builder.dart';
 import '../l10n/app_localizations.dart';
 
 import '../services/history_service.dart';
+import '../widgets/knowledge_points_sheet.dart';
 
 class ResultScreen extends StatefulWidget {
   final Uint8List imageBytes;
@@ -20,6 +21,7 @@ class ResultScreen extends StatefulWidget {
   final String? initialModel;
   final String? historyId;
   final List<Map<String, dynamic>>? initialChatHistory;
+  final String? initialKnowledgePoints;
 
   const ResultScreen({
     super.key, 
@@ -28,6 +30,7 @@ class ResultScreen extends StatefulWidget {
     this.initialModel,
     this.historyId,
     this.initialChatHistory,
+    this.initialKnowledgePoints,
   });
 
   @override
@@ -89,12 +92,14 @@ class _ResultScreenState extends State<ResultScreen> {
   // Model info
   String _currentModel = '';
   String? _currentHistoryId;
+  String? _knowledgePoints;
 
   @override
   void initState() {
     super.initState();
     _currentModel = widget.initialModel ?? '';
     _currentHistoryId = widget.historyId;
+    _knowledgePoints = widget.initialKnowledgePoints;
     
     if (widget.initialSolution != null) {
       _initializeWithSolution(widget.initialSolution!);
@@ -341,6 +346,35 @@ class _ResultScreenState extends State<ResultScreen> {
     );
   }
 
+  void _showKnowledgePoints() {
+    final settings = context.read<SettingsService>();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => KnowledgePointsSheet(
+        existingPoints: _knowledgePoints,
+        chatHistory: _chatHistory,
+        aiService: _aiService,
+        settings: settings,
+        onLoaded: (content) {
+          setState(() {
+            _knowledgePoints = content;
+          });
+          
+          // Save knowledge points to history if we have an ID
+          if (_currentHistoryId != null) {
+            context.read<HistoryService>().updateRecord(
+              _currentHistoryId!,
+              knowledgePoints: content,
+            );
+          }
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -379,6 +413,13 @@ class _ResultScreenState extends State<ResultScreen> {
                     expandedHeight: 300.0,
                     floating: false,
                     pinned: true,
+                    actions: [
+                      IconButton(
+                        icon: const Icon(Icons.lightbulb_outline),
+                        tooltip: l10n.get('viewKnowledgePoints'),
+                        onPressed: _showKnowledgePoints,
+                      ),
+                    ],
                     flexibleSpace: FlexibleSpaceBar(
                       background: Stack(
                         fit: StackFit.expand,

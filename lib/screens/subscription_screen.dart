@@ -3,12 +3,14 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:tobias/tobias.dart';
 import '../services/auth_service.dart';
+import '../l10n/app_localizations.dart';
 
 class SubscriptionScreen extends StatelessWidget {
   const SubscriptionScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final authService = context.watch<AuthService>();
     final profile = authService.profile;
     final currentTier = profile?['subscription_tier'] ?? 'free';
@@ -16,7 +18,7 @@ class SubscriptionScreen extends StatelessWidget {
     final usageLimit = profile?['usage_limit'] ?? 5;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Subscription & Usage')),
+      appBar: AppBar(title: Text(l10n.get('subscriptionAndUsage'))),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -28,35 +30,37 @@ class SubscriptionScreen extends StatelessWidget {
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   children: [
-                    const Text('Current Usage', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    Text(l10n.get('currentUsage'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 16),
                     LinearProgressIndicator(value: usageCount / usageLimit),
                     const SizedBox(height: 8),
-                    Text('$usageCount / $usageLimit queries used'),
+                    Text('$usageCount / $usageLimit ${l10n.get('queriesUsed')}'),
                     const SizedBox(height: 8),
-                    Text('Current Tier: ${currentTier.toUpperCase()}', 
+                    Text('${l10n.get('currentTier')}: ${currentTier.toUpperCase()}', 
                       style: TextStyle(color: Theme.of(context).primaryColor, fontWeight: FontWeight.bold)),
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 24),
-            const Text('Upgrade Plan', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            Text(l10n.get('upgradePlan'), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             
             _buildPlanCard(
               context,
-              title: 'Basic Plan',
-              price: '¥35/month',
-              features: ['100 Queries / Month', 'Standard Speed', 'Access to Gemini 1.5 Pro'],
+              l10n,
+              title: l10n.get('basicPlan'),
+              price: '¥35/${l10n.get('month')}',
+              features: ['100 ${l10n.get('queriesPerMonth')}', l10n.get('standardSpeed'), l10n.get('accessGemini')],
               priceId: 'basic', 
               isCurrent: currentTier == 'basic',
             ),
             _buildPlanCard(
               context,
-              title: 'Premium Plan',
-              price: '¥140/month',
-              features: ['500 Queries / Month', 'Fast Speed', 'Priority Support'],
+              l10n,
+              title: l10n.get('premiumPlan'),
+              price: '¥140/${l10n.get('month')}',
+              features: ['500 ${l10n.get('queriesPerMonth')}', l10n.get('fastSpeed'), l10n.get('prioritySupport')],
               priceId: 'premium', 
               isCurrent: currentTier == 'premium',
             ),
@@ -66,7 +70,7 @@ class SubscriptionScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildPlanCard(BuildContext context, {
+  Widget _buildPlanCard(BuildContext context, AppLocalizations l10n, {
     required String title,
     required String price,
     required List<String> features,
@@ -106,10 +110,10 @@ class SubscriptionScreen extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: isCurrent
-                  ? OutlinedButton(onPressed: null, child: const Text('Current Plan'))
+                  ? OutlinedButton(onPressed: null, child: Text(l10n.get('currentPlan')))
                   : FilledButton(
-                      onPressed: () => _subscribe(context, priceId),
-                      child: const Text('Subscribe'),
+                      onPressed: () => _subscribe(context, l10n, priceId),
+                      child: Text(l10n.get('subscribe')),
                     ),
             ),
           ],
@@ -118,7 +122,7 @@ class SubscriptionScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _subscribe(BuildContext context, String priceId) async {
+  Future<void> _subscribe(BuildContext context, AppLocalizations l10n, String priceId) async {
     try {
       final res = await Supabase.instance.client.functions.invoke(
         'create-alipay-order',
@@ -138,19 +142,19 @@ class SubscriptionScreen extends StatelessWidget {
         // Result status 9000 means success
         if (result['resultStatus'] == '9000') {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Payment Successful! Please refresh to see changes.')),
+            SnackBar(content: Text(l10n.get('paymentSuccess'))),
           );
           // Trigger a refresh of the user profile if possible
           context.read<AuthService>().refreshProfile();
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Payment Failed: ${result['memo']}')),
+            SnackBar(content: Text('${l10n.get('paymentFailed')}${result['memo']}')),
           );
         }
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${l10n.get('error')}: $e')));
       }
     }
   }
