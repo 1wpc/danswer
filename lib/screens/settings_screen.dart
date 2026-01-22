@@ -178,7 +178,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: ExpansionTile(
         title: Text(provider.name),
         subtitle: Text(
-          isConfigured ? 'Configured' : 'Not configured', // TODO: Localize
+          isConfigured ? l10n.get('configured') : l10n.get('notConfigured'),
           style: TextStyle(
             color: isConfigured ? Colors.green : Colors.grey,
             fontSize: 12,

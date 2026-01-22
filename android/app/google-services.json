@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "300735511754",
+    "project_id": "gen-lang-client-0199144040",
+    "storage_bucket": "gen-lang-client-0199144040.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:300735511754:android:2b522f1ca9a62860b00833",
+        "android_client_info": {
+          "package_name": "ltd.mijiu.danswer"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "300735511754-1n4is5bufs7ek3pl547n598n5mm12ng0.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "ltd.mijiu.danswer",
+            "certificate_hash": "6aef85e284647b99e223e001e7763393f67779ef"
+          }
+        },
+        {
+          "client_id": "300735511754-ouetsfo99dhiatlikfefmkcqlsad9o3i.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD4d0tw6ZVmMwee7mAa3XQhrSx9rtEjwYA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "300735511754-ouetsfo99dhiatlikfefmkcqlsad9o3i.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

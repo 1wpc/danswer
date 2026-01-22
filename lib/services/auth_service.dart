@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class AuthService extends ChangeNotifier {
   User? _user;
@@ -70,7 +71,60 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  Future<void> signInWithGoogle() async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+
+      // Configure GoogleSignIn
+      // Note: For iOS/Android, ensure you have configured the Google Cloud Console and added the SHA-1 (Android) / URL Scheme (iOS)
+      // and Client IDs if necessary.
+      // Usually default constructor works if native config is correct.
+      // For Supabase to verify the token, a Web Client ID (serverClientId) might be needed if not configured in Supabase dashboard for Android.
+      // But typically with signInWithIdToken, we just need the ID token.
+      
+      final GoogleSignIn googleSignIn = GoogleSignIn();
+      final googleUser = await googleSignIn.signIn();
+      
+      if (googleUser == null) {
+        // User canceled
+        return;
+      }
+      
+      final googleAuth = await googleUser.authentication;
+      final accessToken = googleAuth.accessToken;
+      final idToken = googleAuth.idToken;
+
+      if (idToken == null) {
+        throw 'No ID Token found.';
+      }
+
+      await Supabase.instance.client.auth.signInWithIdToken(
+        provider: OAuthProvider.google,
+        idToken: idToken,
+        accessToken: accessToken,
+      );
+      
+      // Explicitly update user state immediately after sign in
+      _user = Supabase.instance.client.auth.currentUser;
+      if (_user != null) {
+        await _fetchProfile();
+      }
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Google Sign In Error: $e');
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> signOut() async {
+    final googleSignIn = GoogleSignIn();
+    if (await googleSignIn.isSignedIn()) {
+      await googleSignIn.signOut();
+    }
     await Supabase.instance.client.auth.signOut();
   }
   

@@ -17,6 +17,17 @@ class SubscriptionScreen extends StatelessWidget {
     final usageCount = profile?['usage_count'] ?? 0;
     final usageLimit = profile?['usage_limit'] ?? 5;
 
+    String getTierName(String tier) {
+      switch (tier.toLowerCase()) {
+        case 'basic':
+          return l10n.get('basicPlan');
+        case 'premium':
+          return l10n.get('premiumPlan');
+        default:
+          return l10n.get('freePlan');
+      }
+    }
+
     return Scaffold(
       appBar: AppBar(title: Text(l10n.get('subscriptionAndUsage'))),
       body: SingleChildScrollView(
@@ -24,6 +35,64 @@ class SubscriptionScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // User Info Card
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    CircleAvatar(
+                      radius: 30,
+                      backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
+                      child: Text(
+                        authService.user?.email?.substring(0, 1).toUpperCase() ?? 'U',
+                        style: TextStyle(fontSize: 24, color: Theme.of(context).primaryColor),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(l10n.get('userInfo'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Text('${l10n.get('email')}: ${authService.user?.email ?? l10n.get('unknown')}'),
+                    const SizedBox(height: 16),
+                    OutlinedButton.icon(
+                      onPressed: () async {
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: Text(l10n.get('logout')),
+                            content: Text(l10n.get('logoutConfirm')),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: Text(l10n.get('cancel')),
+                              ),
+                              FilledButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                child: Text(l10n.get('logout')),
+                              ),
+                            ],
+                          ),
+                        );
+
+                        if (confirm == true && context.mounted) {
+                          await context.read<AuthService>().signOut();
+                          if (context.mounted) {
+                            Navigator.of(context).pop();
+                          }
+                        }
+                      },
+                      icon: const Icon(Icons.logout),
+                      label: Text(l10n.get('logout')),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red,
+                        side: const BorderSide(color: Colors.red),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
             // Usage Card
             Card(
               child: Padding(
@@ -36,7 +105,7 @@ class SubscriptionScreen extends StatelessWidget {
                     const SizedBox(height: 8),
                     Text('$usageCount / $usageLimit ${l10n.get('queriesUsed')}'),
                     const SizedBox(height: 8),
-                    Text('${l10n.get('currentTier')}: ${currentTier.toUpperCase()}', 
+                    Text('${l10n.get('currentTier')}: ${getTierName(currentTier)}', 
                       style: TextStyle(color: Theme.of(context).primaryColor, fontWeight: FontWeight.bold)),
                   ],
                 ),
