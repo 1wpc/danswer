@@ -80,10 +80,27 @@ When provided with an image of a problem (math, physics, chemistry, etc.):
       // Try to migrate old settings
       _migrateOldSettings();
     }
+    
+    // Always check for Doubao updates (name change, model updates)
+    await _updateDoubaoConfig();
+    // Always check for SiliconFlow updates
+    await _updateSiliconFlowConfig();
+    // Always check for Moonshot updates
+    await _updateMoonshotConfig();
+    // Remove deprecated DeepSeek
+    await _removeDeprecatedDeepSeek();
 
     _selectedModel = _prefs.getString(_modelKey) ?? 'gpt-4o';
     _selectedProviderId = _prefs.getString(_providerIdKey) ?? 'openai';
     _localeCode = _prefs.getString(_localeKey) ?? 'zh';
+    
+    // Safety check: if selected provider is deepseek (which we just removed), reset to openai
+    if (_selectedProviderId == 'deepseek') {
+      _selectedProviderId = 'openai';
+      _selectedModel = 'gpt-4o';
+      await _prefs.setString(_providerIdKey, _selectedProviderId);
+      await _prefs.setString(_modelKey, _selectedModel);
+    }
     
     String? savedPrompt = _prefs.getString(_promptKey);
     if (savedPrompt != null && savedPrompt.isNotEmpty) {
@@ -105,22 +122,22 @@ When provided with an image of a problem (math, physics, chemistry, etc.):
         models: ['gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo'],
       ),
       ProviderConfig(
-        id: 'deepseek',
-        name: 'DeepSeek',
-        baseUrl: 'https://api.deepseek.com',
-        models: ['deepseek-chat', 'deepseek-coder'],
-      ),
-      ProviderConfig(
         id: 'siliconflow',
         name: 'SiliconFlow',
         baseUrl: 'https://api.siliconflow.cn/v1',
-        models: ['Qwen/Qwen2.5-7B-Instruct', 'Qwen/Qwen2.5-72B-Instruct', 'deepseek-ai/DeepSeek-V2.5'],
+        models: [
+          'Pro/moonshotai/Kimi-K2.5',
+          'Qwen/Qwen3-VL-32B-Instruct',
+          'Qwen/Qwen3-VL-32B-Thinking',
+          'Qwen/Qwen3-VL-235B-A22B-Instruct',
+          'Qwen/Qwen3-VL-235B-A22B-Thinking',
+        ],
       ),
       ProviderConfig(
         id: 'moonshot',
         name: 'Moonshot',
         baseUrl: 'https://api.moonshot.cn/v1',
-        models: ['moonshot-v1-8k', 'moonshot-v1-32k'],
+        models: ['kimi-k2.5'],
       ),
       ProviderConfig(
         id: 'aliyun',
@@ -136,9 +153,14 @@ When provided with an image of a problem (math, physics, chemistry, etc.):
       ),
       ProviderConfig(
         id: 'doubao',
-        name: 'Doubao (Volcengine)',
+        name: 'Volcengine',
         baseUrl: 'https://ark.cn-beijing.volces.com/api/v3',
-        models: ['doubao-pro-4k', 'doubao-lite-4k', 'doubao-pro-32k', 'doubao-lite-32k'],
+        models: [
+          'doubao-seed-1-6-251015',
+          'doubao-seed-1-6-lite-251015',
+          'doubao-seed-1-6-flash-250828',
+          'doubao-seed-1-8-251228',
+        ],
       ),
     ];
   }
@@ -160,6 +182,155 @@ When provided with an image of a problem (math, physics, chemistry, etc.):
         }
         await _saveProviders();
       }
+    }
+  }
+
+  Future<void> _updateDoubaoConfig() async {
+    final index = _providers.indexWhere((p) => p.id == 'doubao');
+    if (index != -1) {
+      final provider = _providers[index];
+      
+      // Update Name
+      if (provider.name != 'Volcengine') {
+         // Although ProviderConfig fields are final, we might need to replace the object or logic.
+         // Actually ProviderConfig fields are NOT final in my search result (apiKey, baseUrl, models are not).
+         // But 'name' IS final in the provided search result: `final String name;`
+         // So we must replace the ProviderConfig object.
+         
+         // Let's create a new config with updated name and models
+         final newConfig = ProviderConfig(
+            id: provider.id,
+            name: 'Volcengine',
+            apiKey: provider.apiKey,
+            baseUrl: provider.baseUrl,
+            models: [
+              'doubao-seed-1-6-251015',
+              'doubao-seed-1-6-lite-251015',
+              'doubao-seed-1-6-flash-250828',
+              'doubao-seed-1-8-251228',
+            ],
+         );
+         
+         _providers[index] = newConfig;
+         await _saveProviders();
+         
+         // Check if we need to update the selected model if it was invalid
+         if (_selectedProviderId == 'doubao') {
+             // If current selected model is not in the new list, reset it
+             if (!newConfig.models.contains(_selectedModel)) {
+                 await setModel(newConfig.models.first, 'doubao');
+             }
+         }
+         return; // Done
+      }
+
+      // If name was already correct, check if models need update (e.g. user manually changed name but models are old?)
+      // Or just standard model update check
+      if (provider.models.contains('doubao-pro-4k') || provider.models.isEmpty) {
+        provider.models = [
+          'doubao-seed-1-6-251015',
+          'doubao-seed-1-6-lite-251015',
+          'doubao-seed-1-6-flash-250828',
+          'doubao-seed-1-8-251228',
+        ];
+        await _saveProviders();
+        
+        // Fix selected model if needed
+        if (_selectedProviderId == 'doubao') {
+             if (!provider.models.contains(_selectedModel)) {
+                 await setModel(provider.models.first, 'doubao');
+             }
+         }
+      }
+    }
+  }
+
+  Future<void> _updateSiliconFlowConfig() async {
+    final index = _providers.indexWhere((p) => p.id == 'siliconflow');
+    if (index != -1) {
+      final provider = _providers[index];
+      // Define the expected new models
+      final newModels = [
+          'Pro/moonshotai/Kimi-K2.5',
+          'Qwen/Qwen3-VL-32B-Instruct',
+          'Qwen/Qwen3-VL-32B-Thinking',
+          'Qwen/Qwen3-VL-235B-A22B-Instruct',
+          'Qwen/Qwen3-VL-235B-A22B-Thinking',
+      ];
+      
+      // Check if models need update (simple check: if first model is different or length is different)
+      // This logic ensures that if the user hasn't manually customized to something completely different, we update it.
+      // Or we can just forcefully update the available models list while keeping API key/Base URL.
+      // Since 'models' is a List<String> field in ProviderConfig, we can just update it.
+      
+      // Let's check if the current model list matches the new one.
+      bool needsUpdate = false;
+      if (provider.models.length != newModels.length) {
+        needsUpdate = true;
+      } else {
+        for (int i = 0; i < newModels.length; i++) {
+          if (provider.models[i] != newModels[i]) {
+            needsUpdate = true;
+            break;
+          }
+        }
+      }
+
+      if (needsUpdate) {
+        provider.models = newModels;
+        await _saveProviders();
+        
+        // Check if currently selected model for this provider is still valid
+        if (_selectedProviderId == 'siliconflow') {
+             if (!newModels.contains(_selectedModel)) {
+                 // Reset to the first model if the selected one is no longer available
+                 await setModel(newModels.first, 'siliconflow');
+             }
+         }
+      }
+    }
+  }
+
+  Future<void> _updateMoonshotConfig() async {
+    final index = _providers.indexWhere((p) => p.id == 'moonshot');
+    if (index != -1) {
+      final provider = _providers[index];
+      // Define the expected new models
+      final newModels = ['kimi-k2.5'];
+      
+      // Check if models need update
+      bool needsUpdate = false;
+      if (provider.models.length != newModels.length) {
+        needsUpdate = true;
+      } else {
+        for (int i = 0; i < newModels.length; i++) {
+          if (provider.models[i] != newModels[i]) {
+            needsUpdate = true;
+            break;
+          }
+        }
+      }
+
+      if (needsUpdate) {
+        provider.models = newModels;
+        await _saveProviders();
+        
+        // Check if currently selected model for this provider is still valid
+        if (_selectedProviderId == 'moonshot') {
+             if (!newModels.contains(_selectedModel)) {
+                 // Reset to the first model if the selected one is no longer available
+                 await setModel(newModels.first, 'moonshot');
+             }
+         }
+      }
+    }
+  }
+
+  Future<void> _removeDeprecatedDeepSeek() async {
+    final index = _providers.indexWhere((p) => p.id == 'deepseek');
+    if (index != -1) {
+      _providers.removeAt(index);
+      await _saveProviders();
     }
   }
 

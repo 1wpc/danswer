@@ -9,11 +9,11 @@ import 'package:photo_view/photo_view.dart';
 import 'package:markdown/markdown.dart' as md;
 import '../services/ai_service.dart';
 import '../services/settings_service.dart';
-import '../utils/latex_builder.dart';
 import '../l10n/app_localizations.dart';
-
 import '../services/history_service.dart';
+import '../services/mistake_service.dart';
 import '../widgets/knowledge_points_sheet.dart';
+import '../utils/latex_builder.dart';
 
 class ResultScreen extends StatefulWidget {
   final Uint8List imageBytes;
@@ -38,35 +38,37 @@ class ResultScreen extends StatefulWidget {
 
   static Widget buildMarkdown(BuildContext context, String data) {
     final theme = Theme.of(context);
-    return MarkdownBody(
-      data: data,
-      selectable: false,
-      styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
-        blockquoteDecoration: BoxDecoration(
-          color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-          borderRadius: BorderRadius.circular(4),
-          border: Border(
-            left: BorderSide(
-              color: theme.colorScheme.primary,
-              width: 4,
+    return SelectionArea(
+      child: MarkdownBody(
+        data: data,
+        selectable: false,
+        styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
+          blockquoteDecoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(4),
+            border: Border(
+              left: BorderSide(
+                color: theme.colorScheme.primary,
+                width: 4,
+              ),
             ),
           ),
+          blockquotePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         ),
-        blockquotePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        extensionSet: md.ExtensionSet(
+          [
+            ...md.ExtensionSet.gitHubFlavored.blockSyntaxes,
+          ],
+          [
+            LatexSyntax(),
+            ...md.ExtensionSet.gitHubFlavored.inlineSyntaxes,
+          ],
+        ),
+        builders: {
+          'latex': LatexElementBuilder(),
+        },
+        fitContent: true,
       ),
-      extensionSet: md.ExtensionSet(
-        [
-          ...md.ExtensionSet.gitHubFlavored.blockSyntaxes,
-        ],
-        [
-          LatexSyntax(),
-          ...md.ExtensionSet.gitHubFlavored.inlineSyntaxes,
-        ],
-      ),
-      builders: {
-        'latex': LatexElementBuilder(),
-      },
-      fitContent: true,
     );
   }
 }
@@ -375,6 +377,33 @@ class _ResultScreenState extends State<ResultScreen> {
     );
   }
 
+  Future<void> _addToMistakeBook() async {
+    final l10n = AppLocalizations.of(context)!;
+    final mistakeService = context.read<MistakeService>();
+    
+    try {
+      await mistakeService.addMistake(
+        widget.imageBytes,
+        _solutionText,
+        model: _currentModel,
+        chatHistory: _chatHistory,
+        knowledgePoints: _knowledgePoints,
+      );
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n.get('addedToMistakeBook'))),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -414,6 +443,11 @@ class _ResultScreenState extends State<ResultScreen> {
                     floating: false,
                     pinned: true,
                     actions: [
+                      IconButton(
+                        icon: const Icon(Icons.bookmark_border),
+                        tooltip: l10n.get('addToMistakeBook'),
+                        onPressed: _addToMistakeBook,
+                      ),
                       IconButton(
                         icon: const Icon(Icons.lightbulb_outline),
                         tooltip: l10n.get('viewKnowledgePoints'),

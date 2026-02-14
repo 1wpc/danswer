@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
@@ -7,23 +8,30 @@ import 'screens/home_screen.dart';
 import 'services/settings_service.dart';
 import 'services/history_service.dart';
 import 'services/auth_service.dart';
+import 'services/mistake_service.dart';
+import 'screens/main_screen.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  runZonedGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
 
-  await Supabase.initialize(
-    url: 'https://srfdbrsxytouwkysdyzs.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNyZmRicnN4eXRvdXdreXNkeXpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU0NTQ4MDQsImV4cCI6MjA4MTAzMDgwNH0.tKTqO2quQ3Patg9-P7j1Ddx7EvfoiPWYEcQ7LTWNF0c',
-  );
-  
-  // Initialize settings before running app
-  final settingsService = SettingsService();
-  await settingsService.init();
+    await Supabase.initialize(
+      url: 'https://srfdbrsxytouwkysdyzs.supabase.co',
+      anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNyZmRicnN4eXRvdXdreXNkeXpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU0NTQ4MDQsImV4cCI6MjA4MTAzMDgwNH0.tKTqO2quQ3Patg9-P7j1Ddx7EvfoiPWYEcQ7LTWNF0c',
+    );
+    
+    // Initialize settings before running app
+    final settingsService = SettingsService();
+    await settingsService.init();
 
-  final historyService = HistoryService();
+    final historyService = HistoryService();
   await historyService.init();
-  
+
+  final mistakeService = MistakeService();
+  await mistakeService.init();
+
   final authService = AuthService();
+  // AuthService init is handled in constructor
 
   runApp(
     MultiProvider(
@@ -31,10 +39,16 @@ void main() async {
         ChangeNotifierProvider.value(value: settingsService),
         ChangeNotifierProvider.value(value: historyService),
         ChangeNotifierProvider.value(value: authService),
+        ChangeNotifierProvider.value(value: mistakeService),
       ],
       child: const MyApp(),
     ),
   );
+  }, (error, stack) {
+    // Catch unhandled errors (like Supabase auth refresh failures)
+    // to prevent them from crashing the app or spamming specific crash logs
+    debugPrint('Caught unhandled error: $error');
+  });
 }
 
 class MyApp extends StatelessWidget {
@@ -61,7 +75,7 @@ class MyApp extends StatelessWidget {
         Locale('zh'),
       ],
       locale: settings.locale,
-      home: const HomeScreen(),
+      home: const MainScreen(),
     );
   }
 }

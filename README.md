@@ -21,7 +21,7 @@
 ### Prerequisites
 
 *   [Flutter SDK](https://flutter.dev/docs/get-started/install) (3.10.0 or higher)
-*   An API Key from OpenAI or a compatible provider (e.g., DeepSeek, Moonshot, etc.).
+*   An API Key from OpenAI or a compatible provider (e.g., Moonshot, etc.).
 
 ### Installation
 

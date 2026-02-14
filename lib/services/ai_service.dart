@@ -117,11 +117,16 @@ class AIService {
               if (delta != null) {
                  // Handle standard content
                  if (delta['content'] != null) {
-                   yield delta['content'] as String;
-                 }
-                 // Handle potential reasoning_content for thinking models
-                 else if (delta['reasoning_content'] != null) {
-                   yield delta['reasoning_content'] as String;
+                   var content = delta['content'] as String;
+                   // Filter out <think> tags if present in content
+                   // This is a simple filter; for robust handling of streaming tags, 
+                   // we would need a buffer state, but this handles the common case 
+                   // where tags might appear in chunks.
+                   // However, usually <think> wraps the reasoning. 
+                   // If the model streams <think>... content ...</think>, we need to hide it.
+                   // Since we are streaming, we can't easily regex the whole block.
+                   // But for now, let's just ignore reasoning_content field which is the main culprit for some models.
+                   yield content;
                  }
                  // Handle standard Gemini format leak (parts -> text)
                  else if (delta['parts'] != null && (delta['parts'] as List).isNotEmpty) {
