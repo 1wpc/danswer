@@ -32,6 +32,9 @@ class _SelfStudySheetState extends State<SelfStudySheet> {
   bool _isLoading = false;
   String? _error;
   StreamSubscription? _subscription;
+  
+  String _contentBuffer = '';
+  Timer? _updateTimer;
 
   @override
   void initState() {
@@ -48,6 +51,7 @@ class _SelfStudySheetState extends State<SelfStudySheet> {
   @override
   void dispose() {
     _subscription?.cancel();
+    _updateTimer?.cancel();
     super.dispose();
   }
 
@@ -97,23 +101,34 @@ Requirements:
     });
 
     try {
+      _contentBuffer = '';
       _subscription = widget.aiService.streamChat(messages, widget.settings).listen(
         (chunk) {
           if (!mounted) return;
-          setState(() {
-            _content += chunk;
-          });
+          _contentBuffer += chunk;
+          if (_updateTimer == null || !_updateTimer!.isActive) {
+            _updateTimer = Timer(const Duration(milliseconds: 100), () {
+              if (mounted) {
+                setState(() {
+                  _content = _contentBuffer;
+                });
+              }
+            });
+          }
         },
         onError: (e) {
           if (!mounted) return;
+          _updateTimer?.cancel();
           setState(() {
             _error = e.toString();
             _isLoading = false;
           });
         },
         onDone: () {
+          _updateTimer?.cancel();
           if (!mounted) return;
           setState(() {
+            _content = _contentBuffer;
             _isLoading = false;
           });
           widget.onLoaded(_content);

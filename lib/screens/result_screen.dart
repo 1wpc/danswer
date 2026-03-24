@@ -92,6 +92,11 @@ class _ResultScreenState extends State<ResultScreen> {
   bool _isSendingFollowUp = false;
   String? _quotedText;
   
+  // Throttling for streaming text
+  Timer? _updateTimer;
+  String _solutionBuffer = '';
+  String _chatBuffer = '';
+  
   // Model info
   String _currentModel = '';
   String? _currentHistoryId;
@@ -182,6 +187,7 @@ class _ResultScreenState extends State<ResultScreen> {
   @override
   void dispose() {
     _subscription?.cancel();
+    _updateTimer?.cancel();
     _scrollController.dispose();
     _chatController.dispose();
     super.dispose();
@@ -238,24 +244,35 @@ class _ResultScreenState extends State<ResultScreen> {
     // Since streamSolveProblem constructs the message itself, we should use streamChat 
     // to ensure consistency with our _chatHistory.
     
+    _solutionBuffer = '';
     _subscription = _aiService.streamChat(_chatHistory, settings).listen(
       (chunk) {
         if (!mounted) return;
-        setState(() {
-          _solutionText += chunk;
-          _isLoading = false; 
-        });
+        _solutionBuffer += chunk;
+        if (_updateTimer == null || !_updateTimer!.isActive) {
+          _updateTimer = Timer(const Duration(milliseconds: 100), () {
+            if (mounted) {
+              setState(() {
+                _solutionText = _solutionBuffer;
+                _isLoading = false; 
+              });
+            }
+          });
+        }
       },
       onError: (error) {
         if (!mounted) return;
+        _updateTimer?.cancel();
         setState(() {
           _errorMessage = error.toString();
           _isLoading = false;
         });
       },
       onDone: () {
+        _updateTimer?.cancel();
         if (!mounted) return;
         setState(() {
+          _solutionText = _solutionBuffer;
           _isLoading = false;
           _isChatActive = true;
           // Add the complete solution to history
@@ -314,17 +331,25 @@ class _ResultScreenState extends State<ResultScreen> {
     final messagesToSend = List<Map<String, dynamic>>.from(_chatHistory.sublist(0, _chatHistory.length - 1));
 
     _subscription?.cancel();
+    _chatBuffer = '';
     _subscription = _aiService.streamChat(messagesToSend, settings).listen(
       (chunk) {
         if (!mounted) return;
-        setState(() {
-          // Update the last message (assistant response)
-          final lastMsg = _chatHistory.last;
-          lastMsg['content'] = (lastMsg['content'] as String) + chunk;
-        });
+        _chatBuffer += chunk;
+        if (_updateTimer == null || !_updateTimer!.isActive) {
+          _updateTimer = Timer(const Duration(milliseconds: 100), () {
+            if (mounted) {
+              setState(() {
+                final lastMsg = _chatHistory.last;
+                lastMsg['content'] = _chatBuffer;
+              });
+            }
+          });
+        }
       },
       onError: (error) {
         if (!mounted) return;
+        _updateTimer?.cancel();
         setState(() {
            // Maybe append error to the message or show snackbar
            ScaffoldMessenger.of(context).showSnackBar(
@@ -334,8 +359,11 @@ class _ResultScreenState extends State<ResultScreen> {
         });
       },
       onDone: () {
+        _updateTimer?.cancel();
         if (!mounted) return;
         setState(() {
+          final lastMsg = _chatHistory.last;
+          lastMsg['content'] = _chatBuffer;
           _isSendingFollowUp = false;
         });
         
