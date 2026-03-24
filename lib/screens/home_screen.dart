@@ -4,13 +4,9 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:image/image.dart' as img;
 import 'result_screen.dart';
-import 'settings_screen.dart';
 import 'crop_screen.dart';
-import 'history_screen.dart';
-import 'auth_screen.dart';
-import 'subscription_screen.dart';
+import 'camera_crop_screen.dart';
 import '../services/settings_service.dart';
-import '../services/auth_service.dart';
 import '../l10n/app_localizations.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -22,6 +18,28 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final ImagePicker _picker = ImagePicker();
+
+  Future<void> _captureAndCrop() async {
+    final l10n = AppLocalizations.of(context)!;
+    try {
+      final Uint8List? croppedBytes = await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => const CameraCropScreen(),
+        ),
+      );
+
+      if (croppedBytes != null) {
+        if (!mounted) return;
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => ResultScreen(imageBytes: croppedBytes),
+          ),
+        );
+      }
+    } catch (e) {
+      _showError('${l10n.get('error')}: $e');
+    }
+  }
 
   Future<void> _pickImage(ImageSource source) async {
     final l10n = AppLocalizations.of(context)!;
@@ -67,11 +85,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
     while (continueAdding) {
       try {
-        final XFile? pickedFile = await _picker.pickImage(source: ImageSource.camera);
-        if (pickedFile == null) break;
-
-        final bytes = await pickedFile.readAsBytes();
-        final croppedBytes = await _cropImage(bytes);
+        final Uint8List? croppedBytes = await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => const CameraCropScreen(),
+          ),
+        );
 
         if (croppedBytes != null) {
           images.add(croppedBytes);
@@ -242,41 +260,9 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
+        title: Text(l10n.get('appTitle')),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.person, color: colorScheme.primary),
-          onPressed: () {
-            final authService = context.read<AuthService>();
-            if (authService.isLoggedIn) {
-               Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => const SubscriptionScreen()),
-              );
-            } else {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => const AuthScreen()),
-              );
-            }
-          },
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.history, color: colorScheme.primary),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => const HistoryScreen()),
-              );
-            },
-          ),
-          IconButton(
-            icon: Icon(Icons.settings, color: colorScheme.primary),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => const SettingsScreen()),
-              );
-            },
-          ),
-        ],
       ),
       body: Container(
         decoration: BoxDecoration(
@@ -446,7 +432,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         context,
                         icon: Icons.camera_alt_rounded,
                         label: l10n.get('takePhoto'),
-                        onPressed: () => _pickImage(ImageSource.camera),
+                        onPressed: _captureAndCrop,
                         isPrimary: true,
                       ),
                       const SizedBox(height: 16),
