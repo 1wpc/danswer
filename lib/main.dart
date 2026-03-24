@@ -10,8 +10,10 @@ import 'services/history_service.dart';
 import 'services/auth_service.dart';
 import 'services/mistake_service.dart';
 import 'screens/main_screen.dart';
+import 'package:flutter_skill/flutter_skill.dart';
 
 void main() async {
+  FlutterSkillBinding.ensureInitialized();
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
 

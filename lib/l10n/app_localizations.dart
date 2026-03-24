@@ -97,6 +97,8 @@ class AppLocalizations {
       'saveNote': 'Save Note',
       'enterNote': 'Enter your note here',
       'noMistakes': 'No mistakes recorded',
+      'selfStudy': 'Self-Study',
+      'viewSelfStudy': 'Systematic Self-Study',
     },
     'zh': {
       'appTitle': '答达——你的AI家教',
@@ -187,6 +189,8 @@ class AppLocalizations {
       'saveNote': '保存笔记',
       'enterNote': '在此输入笔记',
       'noMistakes': '暂无错题记录',
+      'selfStudy': '自学',
+      'viewSelfStudy': '系统自学',
     },
   };
 

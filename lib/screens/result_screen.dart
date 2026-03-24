@@ -13,6 +13,7 @@ import '../l10n/app_localizations.dart';
 import '../services/history_service.dart';
 import '../services/mistake_service.dart';
 import '../widgets/knowledge_points_sheet.dart';
+import '../widgets/self_study_sheet.dart';
 import '../utils/latex_builder.dart';
 
 class ResultScreen extends StatefulWidget {
@@ -95,6 +96,7 @@ class _ResultScreenState extends State<ResultScreen> {
   String _currentModel = '';
   String? _currentHistoryId;
   String? _knowledgePoints;
+  String? _selfStudyContent;
 
   @override
   void initState() {
@@ -404,6 +406,31 @@ class _ResultScreenState extends State<ResultScreen> {
     }
   }
 
+  void _showSelfStudy() {
+    if (!_isChatActive) return; // Wait until solution is ready
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => SelfStudySheet(
+        existingContent: _selfStudyContent,
+        chatHistory: _chatHistory,
+        aiService: _aiService,
+        settings: context.read<SettingsService>(),
+        onLoaded: (content) {
+          if (mounted) {
+            setState(() {
+              _selfStudyContent = content;
+            });
+            // We don't save self-study content to history automatically yet, 
+            // but we could update historyItem here if needed.
+          }
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -447,6 +474,11 @@ class _ResultScreenState extends State<ResultScreen> {
                         icon: const Icon(Icons.bookmark_border),
                         tooltip: l10n.get('addToMistakeBook'),
                         onPressed: _addToMistakeBook,
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.school_outlined),
+                        tooltip: l10n.get('viewSelfStudy'),
+                        onPressed: _showSelfStudy,
                       ),
                       IconButton(
                         icon: const Icon(Icons.lightbulb_outline),
