@@ -143,6 +143,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
               const SizedBox(height: 24),
               Text(
+                l10n.get('currentModel'),
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              _buildModelSelector(settings, l10n),
+
+              const SizedBox(height: 24),
+              Text(
                 l10n.get('systemPrompt'),
                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
@@ -159,6 +167,77 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 24),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModelSelector(SettingsService settings, AppLocalizations l10n) {
+    final configuredProviders = settings.providers.where((p) => p.apiKey.isNotEmpty).toList();
+    
+    if (configuredProviders.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.red.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.warning_amber_rounded, color: Colors.red),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                l10n.get('apiKeyRequired'),
+                style: const TextStyle(color: Colors.red),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final List<DropdownMenuItem<String>> dropdownItems = [];
+    for (var provider in configuredProviders) {
+      for (var model in provider.models) {
+        final value = '${provider.id}:$model';
+        dropdownItems.add(
+          DropdownMenuItem<String>(
+            value: value,
+            child: Text(
+              '${provider.name} - $model',
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        );
+      }
+    }
+
+    String? currentValue = '${settings.selectedProviderId}:${settings.model}';
+    if (!dropdownItems.any((item) => item.value == currentValue)) {
+      currentValue = null;
+    }
+
+    return InputDecorator(
+      decoration: const InputDecoration(
+        border: OutlineInputBorder(),
+        contentPadding: EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: currentValue,
+          isExpanded: true,
+          hint: Text(l10n.get('modelName')),
+          items: dropdownItems,
+          onChanged: (String? newValue) {
+            if (newValue != null) {
+              final parts = newValue.split(':');
+              if (parts.length == 2) {
+                settings.setModel(parts[1], parts[0]);
+              }
+            }
+          },
         ),
       ),
     );

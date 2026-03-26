@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -142,6 +141,15 @@ class MistakeService with ChangeNotifier {
           debugPrint('Error deleting mistake image: $e');
         }
       }
+    }
+  }
+
+  Future<void> updateMistake(MistakeRecord updatedRecord) async {
+    final index = _items.indexWhere((item) => item.id == updatedRecord.id);
+    if (index != -1) {
+      _items[index] = updatedRecord;
+      await _saveMistakes();
+      notifyListeners();
     }
   }
 

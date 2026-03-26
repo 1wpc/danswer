@@ -11,6 +11,8 @@ PODS:
     - GoogleUtilities/Environment (~> 8.0)
     - GoogleUtilities/UserDefaults (~> 8.0)
     - PromisesObjC (~> 2.4)
+  - camera_macos (0.0.1):
+    - FlutterMacOS
   - file_selector_macos (0.0.1):
     - FlutterMacOS
   - FlutterMacOS (1.0.0)
@@ -54,6 +56,7 @@ PODS:
 
 DEPENDENCIES:
   - app_links (from `Flutter/ephemeral/.symlinks/plugins/app_links/macos`)
+  - camera_macos (from `Flutter/ephemeral/.symlinks/plugins/camera_macos/macos`)
   - file_selector_macos (from `Flutter/ephemeral/.symlinks/plugins/file_selector_macos/macos`)
   - FlutterMacOS (from `Flutter/ephemeral`)
   - google_sign_in_ios (from `Flutter/ephemeral/.symlinks/plugins/google_sign_in_ios/darwin`)
@@ -74,6 +77,8 @@ SPEC REPOS:
 EXTERNAL SOURCES:
   app_links:
     :path: Flutter/ephemeral/.symlinks/plugins/app_links/macos
+  camera_macos:
+    :path: Flutter/ephemeral/.symlinks/plugins/camera_macos/macos
   file_selector_macos:
     :path: Flutter/ephemeral/.symlinks/plugins/file_selector_macos/macos
   FlutterMacOS:
@@ -91,6 +96,7 @@ SPEC CHECKSUMS:
   app_links: 05a6ec2341985eb05e9f97dc63f5837c39895c3f
   AppAuth: d4f13a8fe0baf391b2108511793e4b479691fb73
   AppCheckCore: cc8fd0a3a230ddd401f326489c99990b013f0c4f
+  camera_macos: 9fd766915a6c236c8b3fd902f7ccd215636cd07a
   file_selector_macos: 9e9e068e90ebee155097d00e89ae91edb2374db7
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
   google_sign_in_ios: b48bb9af78576358a168361173155596c845f0b9

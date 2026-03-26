@@ -43,7 +43,7 @@ class SubscriptionScreen extends StatelessWidget {
                   children: [
                     CircleAvatar(
                       radius: 30,
-                      backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
+                      backgroundColor: Theme.of(context).primaryColor.withValues(alpha: 0.1),
                       child: Text(
                         authService.user?.email?.substring(0, 1).toUpperCase() ?? 'U',
                         style: TextStyle(fontSize: 24, color: Theme.of(context).primaryColor),
@@ -181,13 +181,68 @@ class SubscriptionScreen extends StatelessWidget {
               child: isCurrent
                   ? OutlinedButton(onPressed: null, child: Text(l10n.get('currentPlan')))
                   : FilledButton(
-                      onPressed: () => _subscribe(context, l10n, priceId),
+                      onPressed: () => _showPaymentMethodSheet(context, l10n, priceId),
                       child: Text(l10n.get('subscribe')),
                     ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  void _showPaymentMethodSheet(BuildContext context, AppLocalizations l10n, String priceId) {
+    String selectedMethod = 'alipay';
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (BuildContext bottomSheetContext) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      l10n.get('selectPaymentMethod'),
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.qr_code_scanner, color: Colors.blue),
+                      title: Text(l10n.get('alipay')),
+                      trailing: selectedMethod == 'alipay' 
+                          ? const Icon(Icons.check_circle, color: Colors.blue)
+                          : const Icon(Icons.circle_outlined, color: Colors.grey),
+                      onTap: () {
+                        setState(() => selectedMethod = 'alipay');
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                    FilledButton(
+                      onPressed: () {
+                        Navigator.pop(bottomSheetContext);
+                        if (selectedMethod == 'alipay') {
+                          _subscribe(context, l10n, priceId);
+                        }
+                      },
+                      child: Text(l10n.get('confirm')),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 

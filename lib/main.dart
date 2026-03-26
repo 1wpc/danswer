@@ -4,7 +4,6 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'l10n/app_localizations.dart';
-import 'screens/home_screen.dart';
 import 'services/settings_service.dart';
 import 'services/history_service.dart';
 import 'services/auth_service.dart';

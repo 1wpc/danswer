@@ -120,6 +120,7 @@ class _CameraCropScreenState extends State<CameraCropScreen> {
 
   Future<void> _confirmCrop() async {
     if (_isProcessing || _cropController == null) return;
+    final l10n = AppLocalizations.of(context);
     
     setState(() {
       _isProcessing = true;
@@ -132,14 +133,13 @@ class _CameraCropScreenState extends State<CameraCropScreen> {
       if (data == null) {
         throw Exception('Failed to get image data');
       }
-      
+
       final bytes = data.buffer.asUint8List();
       
       if (mounted) {
         Navigator.of(context).pop(bytes);
       }
     } catch (e) {
-      final l10n = AppLocalizations.of(context);
       if (mounted && l10n != null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('${l10n.get('error')}: $e')),

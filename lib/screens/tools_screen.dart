@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import 'mistake_book_screen.dart';
+import 'review_screen.dart';
 
 class ToolsScreen extends StatelessWidget {
   const ToolsScreen({super.key});
@@ -23,6 +24,20 @@ class ToolsScreen extends StatelessWidget {
               Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (context) => const MistakeBookScreen(),
+                ),
+              );
+            },
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.style, color: Colors.green),
+            title: Text(l10n.get('dailyReview')),
+            subtitle: Text(l10n.get('reviewSubtitle')),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const ReviewScreen(),
                 ),
               );
             },
